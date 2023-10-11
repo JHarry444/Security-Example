@@ -1,7 +1,5 @@
 package com.sky.SkyFlights.config;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -64,11 +62,9 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector intro) throws Exception {
 		http.csrf(csrf -> csrf.disable());
 		http.cors(cors -> cors.configurationSource(this.corsConfigurationSource()));
-		http.formLogin(withDefaults());
-		http.authorizeHttpRequests(auth -> auth
-				.requestMatchers(new MvcRequestMatcher.Builder(intro).servletPath("/").pattern("/login")).permitAll()
-				.requestMatchers(new MvcRequestMatcher.Builder(intro).servletPath("/").pattern("/users/register"))
-				.permitAll());
+		http.formLogin(form -> form.loginProcessingUrl("/login"));
+		http.authorizeHttpRequests(
+				auth -> auth.requestMatchers(AntPathRequestMatcher.antMatcher("/users/register")).permitAll());
 		http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
 		http.exceptionHandling(
 				handler -> handler.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));

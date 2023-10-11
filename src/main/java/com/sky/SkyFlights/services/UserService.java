@@ -1,7 +1,8 @@
 package com.sky.SkyFlights.services;
 
-import java.util.Optional;
-
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -9,15 +10,15 @@ import com.sky.SkyFlights.domain.User;
 import com.sky.SkyFlights.repos.UserRepo;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
-	public UserRepo userRepo;
+	public UserRepo repo;
 
 	private BCryptPasswordEncoder encoder;
 
 	public UserService(UserRepo userRepo, BCryptPasswordEncoder encoder) {
 		super();
-		this.userRepo = userRepo;
+		this.repo = userRepo;
 		this.encoder = encoder;
 	}
 
@@ -26,21 +27,15 @@ public class UserService {
 		// encode password into hash in db
 
 		user.setPassword(this.encoder.encode(user.getPassword()));
-		User saved = this.userRepo.save(user);
+		User saved = this.repo.save(user);
 		return saved.getUsername();
 	}
 
-	public User getUserById(int userID) {
-		Optional<User> optionalUser = userRepo.findById(userID);
-		return optionalUser.get();
-	}
+	@Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		return this.repo.findByUsername(username)
+				.orElseThrow(() -> new UsernameNotFoundException("No user exists with name: " + username));
 
-	public User getBookingByUsername(String username) {
-		return userRepo.findByUsername(username).get();
-	}
-
-	public int getUserID(String username) {
-		return userRepo.findByUsername(username).get().getUserID();
 	}
 
 }

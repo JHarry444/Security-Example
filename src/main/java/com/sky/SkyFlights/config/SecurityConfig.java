@@ -1,5 +1,6 @@
 package com.sky.SkyFlights.config;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +10,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
@@ -18,27 +22,27 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
-import com.sky.SkyFlights.services.MyUserDetailsService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private UserDetailsService userDetailsService;
+
 	@Bean
 	DaoAuthenticationProvider authProvider() {
 		DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 		authProvider.setUserDetailsService(userDetailsService);
-		authProvider.setPasswordEncoder(passwordEncoder());
+		authProvider.setPasswordEncoder(passwordEncoder);
 		return authProvider;
 	}
-
-	@Bean
-	BCryptPasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
-
-	@Autowired
-	private MyUserDetailsService userDetailsService;
 
 	@Bean
 	CorsConfigurationSource corsConfigurationSource() {
@@ -62,7 +66,13 @@ public class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector intro) throws Exception {
 		http.csrf(csrf -> csrf.disable());
 		http.cors(cors -> cors.configurationSource(this.corsConfigurationSource()));
-		http.formLogin(form -> form.loginProcessingUrl("/login"));
+		http.formLogin(form -> form.loginProcessingUrl("/login").successHandler(new AuthenticationSuccessHandler() {
+			@Override
+			public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+					Authentication authentication) throws IOException, ServletException {
+				response.setStatus(200);
+			}
+		}));
 		http.authorizeHttpRequests(
 				auth -> auth.requestMatchers(AntPathRequestMatcher.antMatcher("/users/register")).permitAll());
 		http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());

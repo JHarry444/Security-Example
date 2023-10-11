@@ -1,11 +1,8 @@
 package com.sky.SkyFlights.config;
 
-import java.io.IOException;
-import java.util.Arrays;
+import static org.springframework.security.config.Customizer.withDefaults;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -14,14 +11,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 import com.sky.SkyFlights.services.MyUserDetailsService;
 
@@ -64,19 +61,17 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	SecurityFilterChain configure(HttpSecurity http) throws Exception {
-		http.csrf().disable();
+	SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector intro) throws Exception {
+		http.csrf(csrf -> csrf.disable());
 		http.cors(cors -> cors.configurationSource(this.corsConfigurationSource()));
-		http.formLogin().loginProcessingUrl("/login").successHandler(new AuthenticationSuccessHandler() {
-			@Override
-			public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-					Authentication authentication) throws IOException, ServletException {
-				response.setStatus(204);
-			}
-		});
-		http.authorizeHttpRequests().antMatchers("/users/register", "/flights/**").permitAll().anyRequest()
-				.authenticated();
-		http.exceptionHandling().authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
+		http.formLogin(withDefaults());
+		http.authorizeHttpRequests(auth -> auth
+				.requestMatchers(new MvcRequestMatcher.Builder(intro).servletPath("/").pattern("/login")).permitAll()
+				.requestMatchers(new MvcRequestMatcher.Builder(intro).servletPath("/").pattern("/users/register"))
+				.permitAll());
+		http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
+		http.exceptionHandling(
+				handler -> handler.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
 		return http.build();
 	}
 
